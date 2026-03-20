@@ -153,7 +153,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
         filepath = os.path.join(DIR, path.lstrip("/"))
         if os.path.isfile(filepath):
             ext = filepath.rsplit(".", 1)[-1]
-            ct  = {"html":"text/html","js":"application/javascript","css":"text/css"}.get(ext,"text/plain")
+            ct  = {"html":"text/html","js":"application/javascript","css":"text/css","svg":"image/svg+xml"}.get(ext,"text/plain")
             with open(filepath, "rb") as f:
                 data = f.read()
             self.send_cors(200, ct)
