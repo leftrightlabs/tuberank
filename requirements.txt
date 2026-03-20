@@ -1,0 +1,2 @@
+# Optional: loads .env automatically. You can skip this and use export VAR=value instead.
+python-dotenv>=1.0.0
