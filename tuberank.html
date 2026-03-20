@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TubeRank — YouTube SEO Intelligence</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root{--red:#FF2D2D;--bg:#090909;--surface:#111;--surface2:#181818;--surface3:#222;--border:#2a2a2a;--text:#F0F0F0;--muted:#777;--green:#00E676;--amber:#FFB300;--blue:#448AFF}
@@ -86,6 +87,18 @@ input:focus{border-color:var(--red)}
 .aiph{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
 .aibg{display:inline-flex;align-items:center;background:rgba(68,138,255,.1);border:1px solid rgba(68,138,255,.22);border-radius:5px;padding:3px 9px;font-size:10px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;color:var(--blue)}
 .air{font-size:13px;line-height:1.8;color:#ccc;white-space:pre-wrap}
+.air .ai-md{white-space:normal;line-height:1.65}
+.ai-md{font-size:13px;line-height:1.65;color:#ccc}
+.ai-md-h{font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:.45px;color:var(--text);margin:18px 0 10px;line-height:1.25}
+.ai-md-h:first-child{margin-top:0}
+.ai-md-h3{font-size:13px;letter-spacing:.35px;color:#ddd;margin-top:14px}
+.ai-md-p{margin:0 0 10px;color:#ccc}
+.ai-md-p:last-child{margin-bottom:0}
+.ai-md-ul,.ai-md-ol{margin:0 0 12px 0;padding-left:1.15em;color:#ccc}
+.ai-md-ul li,.ai-md-ol li{margin-bottom:6px;padding-left:2px}
+.ai-md-ul{list-style:disc}
+.ai-md-ol{list-style:decimal}
+#det .ai-md{padding:12px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;margin-top:4px}
 .ail{display:flex;align-items:center;gap:9px;color:var(--muted);font-size:13px}
 .spin{width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -377,6 +390,68 @@ function withBusinessContext(prompt) {
   return `Business context source: ${BUSINESS_CONTEXT_SOURCE}\n\nBusiness context:\n${BUSINESS_CONTEXT}\n\n---\n\nTask:\n${prompt}`;
 }
 
+/** Escape then render a subset of Markdown (## headings, **bold**, - / 1. lists) for readable AI output. */
+function renderAiMarkdown(raw) {
+  if (!raw || !String(raw).trim()) return '';
+  const esc = (s) => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const bold = (s) => esc(s).replace(/\*\*([\s\S]*?)\*\*/g,'<strong>$1</strong>');
+  let t = String(raw).replace(/\r\n/g,'\n').replace(/\r/g,'\n');
+  t = t.replace(/([^\n])(#{2,3}\s)/g,'$1\n\n$2');
+
+  function processBody(body) {
+    if (!body.trim()) return '';
+    const lines = body.split('\n');
+    let html = '';
+    let listKind = null;
+    const flushList = () => {
+      if (listKind) { html += listKind === 'ul' ? '</ul>' : '</ol>'; listKind = null; }
+    };
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) { flushList(); continue; }
+      let ulM = /^[-*•]\s+(.+)$/.exec(trimmed);
+      if (!ulM) ulM = /^[–—]\s+(.+)$/.exec(trimmed);
+      const olM = /^\d+\.\s+(.+)$/.exec(trimmed);
+      if (ulM) {
+        if (listKind !== 'ul') { flushList(); html += '<ul class="ai-md-ul">'; listKind = 'ul'; }
+        html += '<li>' + bold(ulM[1]) + '</li>';
+      } else if (olM) {
+        if (listKind !== 'ol') { flushList(); html += '<ol class="ai-md-ol">'; listKind = 'ol'; }
+        html += '<li>' + bold(olM[1]) + '</li>';
+      } else {
+        flushList();
+        const subH = /^(#{2,3})\s+(.+)$/.exec(trimmed);
+        if (subH) {
+          const lev = subH[1].length;
+          html += '<div class="ai-md-h' + (lev >= 3 ? ' ai-md-h3' : '') + '">' + bold(subH[2]) + '</div>';
+        } else {
+          html += '<p class="ai-md-p">' + bold(trimmed) + '</p>';
+        }
+      }
+    }
+    flushList();
+    return html;
+  }
+
+  const sections = t.split(/\n+(?=#{2,3}\s)/);
+  let out = '';
+  for (const sec of sections) {
+    const s = sec.trim();
+    if (!s) continue;
+    const lines = s.split('\n');
+    const first = lines[0].trim();
+    const hm = /^(#{2,3})\s+(.+)$/.exec(first);
+    if (hm) {
+      const lev = hm[1].length;
+      out += '<div class="ai-md-h' + (lev >= 3 ? ' ai-md-h3' : '') + '">' + bold(hm[2]) + '</div>';
+      out += processBody(lines.slice(1).join('\n'));
+    } else {
+      out += processBody(s);
+    }
+  }
+  return out || '<p class="ai-md-p">' + bold(t) + '</p>';
+}
+
 async function claudeAI(prompt, el) {
   el.innerHTML = '<div class="ail"><div class="spin"></div>Claude is analyzing...</div>';
   try {
@@ -406,7 +481,8 @@ async function claudeAI(prompt, el) {
     });
     const d = await res.json().catch(() => ({}));
     if (!res.ok || d.error) throw new Error((d.error && d.error.message) || d.error || JSON.stringify(d) || `HTTP ${res.status}`);
-    el.textContent = d.content.map(b=>b.text||'').join('');
+    const text = d.content.map(b=>b.text||'').join('');
+    el.innerHTML = '<div class="ai-md">' + renderAiMarkdown(text) + '</div>';
   } catch(e) {
     el.textContent = 'Error: ' + (e.message || 'Could not reach Claude.');
   }
@@ -661,7 +737,7 @@ function closeDet(){document.getElementById('det').classList.remove('open');setT
 async function analyzeVid(id) {
   const v=videos.find(x=>x.id===id); if(!v)return;
   const {score,checks}=seo(v);
-  await claudeAI(`You are a YouTube SEO expert. Analyze this video:\n\nTitle: "${v.title}"\nDescription (first 300 chars): "${(v.description||'').slice(0,300)}"\nTags: ${JSON.stringify(v.tags||[])}\nViews: ${v.viewCount} | Likes: ${v.likeCount}\nSEO Score: ${score}/100\nIssues: ${checks.filter(c=>c.s!=='ok').map(c=>c.t).join(', ')}\n\nProvide:\n1. Improved title (under 65 chars, keyword-rich)\n2. 5 specific new tag suggestions\n3. Description opening line improvement\n4. One thumbnail tip to boost CTR\n\nBe concise and specific.`, document.getElementById('det-ai'));
+  await claudeAI(`You are a YouTube SEO expert. Analyze this video:\n\nTitle: "${v.title}"\nDescription (first 300 chars): "${(v.description||'').slice(0,300)}"\nTags: ${JSON.stringify(v.tags||[])}\nViews: ${v.viewCount} | Likes: ${v.likeCount}\nSEO Score: ${score}/100\nIssues: ${checks.filter(c=>c.s!=='ok').map(c=>c.t).join(', ')}\n\nRespond in Markdown only. Use a separate ## heading for each of the four sections below, then bullet lines starting with "- " for details:\n## 1. Improved title\n## 2. Tag suggestions\n## 3. Description opening\n## 4. Thumbnail CTR tip\n\nUnder each heading: improved copy in **bold** where it is a direct suggestion, then concise bullets. Keep each section scannable.`, document.getElementById('det-ai'));
 }
 
 // ── AI FEATURES ──────────────────────────────────────────────────────────────
