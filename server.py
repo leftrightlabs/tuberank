@@ -14,7 +14,7 @@ DIR  = os.path.dirname(os.path.abspath(__file__))
 # Load .env from project directory if python-dotenv is installed
 try:
     from dotenv import load_dotenv
-    load_dotenv(os.path.join(DIR, ".env"))
+    load_dotenv(os.path.join(DIR, ".env"), override=True)
 except ImportError:
     pass
 
@@ -132,7 +132,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
     def do_GET(self):
         path = urllib.parse.urlparse(self.path).path
 
-        if path == "/proxy/health":
+        if path == "/api/health":
             body = json.dumps({
                 "youtube": bool(YOUTUBE_API_KEY),
                 "claude": bool(ANTHROPIC_API_KEY),
@@ -176,8 +176,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
         path = urllib.parse.urlparse(self.path).path
 
-        # ── /proxy/login  ────────────────────────────────────────────────────
-        if path == "/proxy/login":
+        # ── /api/login  ────────────────────────────────────────────────────
+        if path == "/api/login":
             if not TUBERANK_PASSWORD:
                 self.send_cors(503)
                 self.wfile.write(json.dumps({
@@ -199,8 +199,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(json.dumps({"ok": True, "channelId": YOUTUBE_CHANNEL_ID}).encode())
             return
 
-        # ── /proxy/youtube  ──────────────────────────────────────────────────
-        if path == "/proxy/youtube":
+        # ── /api/youtube  ──────────────────────────────────────────────────
+        if path == "/api/youtube":
             yt_key = YOUTUBE_API_KEY
             endpoint = payload.get("endpoint", "")
             if not yt_key:
@@ -239,8 +239,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self.send_cors(500)
                 self.wfile.write(json.dumps({"error": str(e)}).encode())
 
-        # ── /proxy/claude  ───────────────────────────────────────────────────
-        elif path == "/proxy/claude":
+        # ── /api/claude  ───────────────────────────────────────────────────
+        elif path == "/api/claude":
             claude_key = ANTHROPIC_API_KEY
             messages   = payload.get("messages", [])
             model      = payload.get("model", "claude-sonnet-4-20250514")
@@ -278,8 +278,8 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 self.send_cors(500)
                 self.wfile.write(json.dumps({"error": str(e)}).encode())
 
-        # ── /proxy/notion-context  ───────────────────────────────────────────
-        elif path == "/proxy/notion-context":
+        # ── /api/notion-context  ───────────────────────────────────────────
+        elif path == "/api/notion-context":
             notion_key = NOTION_TOKEN
             page_id = NOTION_PAGE_ID
             if not notion_key:

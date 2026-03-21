@@ -171,8 +171,7 @@ input:focus{border-color:var(--red)}
     <p class="sp">API keys and your channel ID live in <code>.env</code> on the server. Enter the shared password to open the dashboard.</p>
 
     <div class="info-box">
-      <strong>✅ You're running on localhost.</strong><br>
-      Set <code>YOUTUBE_API_KEY</code>, <code>YOUTUBE_CHANNEL_ID</code>, <code>ANTHROPIC_API_KEY</code>, <code>TUBERANK_PASSWORD</code>, and optionally <code>NOTION_TOKEN</code> / <code>NOTION_PAGE_ID</code> in <code>.env</code>. Use <code>pip install -r requirements.txt</code> to load <code>.env</code> automatically.
+      <strong>🔐 Team access.</strong> Enter the shared password to open the dashboard. API keys are managed by your admin in the Vercel dashboard — you don't need to configure anything.
     </div>
     <div class="info-box" id="env-hint" style="display:none;margin-top:12px"></div>
 
@@ -279,7 +278,7 @@ input:focus{border-color:var(--red)}
 </div>
 
 <script>
-const BASE = 'http://localhost:8765';
+const BASE = '';
 let CID='', channel=null, videos=[];
 let SERVER_HEALTH = {youtube:false,claude:false,notionToken:false,notionPageFromEnv:false,youtubeChannel:false,passwordGate:false};
 let BUSINESS_CONTEXT = '';
@@ -312,7 +311,7 @@ function updateNotionHeaderStatus() {
 }
 async function fetchServerHealth() {
   try {
-    const res = await fetch(`${BASE}/proxy/health`);
+    const res = await fetch(`${BASE}/api/health`);
     SERVER_HEALTH = await res.json();
   } catch (e) {
     SERVER_HEALTH = {youtube:false,claude:false,notionToken:false,notionPageFromEnv:false,youtubeChannel:false,passwordGate:false};
@@ -334,7 +333,7 @@ function updateEnvHint() {
   if (!ch) parts.push('<code>YOUTUBE_CHANNEL_ID</code>');
   if (!c) parts.push('<code>ANTHROPIC_API_KEY</code>');
   if (!p) parts.push('<code>TUBERANK_PASSWORD</code>');
-  box.innerHTML = '<strong style="color:var(--amber)">⚠ Server missing:</strong> ' + parts.join(', ') + '. Set in <code>.env</code> and restart <code>server.py</code>.';
+  box.innerHTML = '<strong style="color:var(--amber)">⚠ Server missing:</strong> ' + parts.join(', ') + '. Set in Vercel dashboard → Settings → Environment Variables.';
 }
 
 function initCredentials() {
@@ -343,7 +342,7 @@ function initCredentials() {
 
 // ── API HELPERS ──────────────────────────────────────────────────────────────
 async function ytFetch(endpoint) {
-  const res = await fetch(`${BASE}/proxy/youtube`, {
+  const res = await fetch(`${BASE}/api/youtube`, {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify({endpoint})
@@ -357,7 +356,7 @@ async function ytFetch(endpoint) {
 }
 
 async function loginWithPassword(password) {
-  const res = await fetch(`${BASE}/proxy/login`, {
+  const res = await fetch(`${BASE}/api/login`, {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify({password})
@@ -371,7 +370,7 @@ async function loginWithPassword(password) {
 }
 
 async function notionFetchContext() {
-  const res = await fetch(`${BASE}/proxy/notion-context`, {
+  const res = await fetch(`${BASE}/api/notion-context`, {
     method: 'POST',
     headers: {'Content-Type':'application/json'},
     body: JSON.stringify({})
@@ -470,7 +469,7 @@ async function claudeAI(prompt, el) {
       updateNotionHeaderStatus();
       el.innerHTML = '<div class="ail"><div class="spin"></div>Claude is analyzing...</div>';
     }
-    const res = await fetch(`${BASE}/proxy/claude`, {
+    const res = await fetch(`${BASE}/api/claude`, {
       method: 'POST',
       headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
@@ -502,7 +501,7 @@ async function connect() {
     err.classList.add('on'); return;
   }
   if (!SERVER_HEALTH.youtube || !SERVER_HEALTH.claude || !SERVER_HEALTH.youtubeChannel || !SERVER_HEALTH.passwordGate) {
-    err.textContent = 'Server is not fully configured. Check .env (API keys, channel ID, password) and restart server.py.';
+    err.textContent = 'Server is not fully configured. Set YOUTUBE_API_KEY, YOUTUBE_CHANNEL_ID, ANTHROPIC_API_KEY, and TUBERANK_PASSWORD in Vercel dashboard → Settings → Environment Variables.';
     err.classList.add('on'); return;
   }
   let loginData;

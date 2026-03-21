@@ -1,0 +1,9 @@
+{
+  "rewrites": [
+    { "source": "/", "destination": "/tuberank.html" }
+  ],
+  "functions": {
+    "api/claude.py": { "maxDuration": 60 },
+    "api/notion-context.py": { "maxDuration": 30 }
+  }
+}
